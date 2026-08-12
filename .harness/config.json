@@ -1,0 +1,50 @@
+{
+  "$comment": "Harness configuration. Committed. Edit this rather than the hook scripts.",
+
+  "enforcement": "blocking",
+  "$comment_enforcement": "blocking = hooks exit 2 and stop the action. advisory = hooks warn only.",
+
+  "phase_gate": true,
+  "$comment_phase_gate": "Restrict source edits by the current phase in state.json. This is what makes 'plan before code' real.",
+
+  "verify_gate": true,
+  "max_stop_attempts": 3,
+  "verify_timeout": 300,
+  "$comment_verify_gate": "Block end-of-turn while verification fails. After max_stop_attempts, escalate to the human instead of trapping the session.",
+
+  "artifact_gate": true,
+  "$comment_artifact_gate": "Refuse to let a pipeline agent stop without writing its artifact and VERDICT block.",
+
+  "validate_on_write": true,
+  "typecheck_on_write": true,
+  "$comment_validate_on_write": "Format + lint the touched file after each write. Set typecheck_on_write false in large repos where a project-wide tsc is slow.",
+
+  "verify": {
+    "$comment": "Leave a key empty to auto-detect from package.json scripts / go.mod / Cargo.toml.",
+    "typecheck": "",
+    "lint": "",
+    "test": "",
+    "build": ""
+  },
+
+  "protected": [],
+  "$comment_protected": "Extra glob patterns, relative to the project root, that the pipeline may not write. Secrets and .git are always protected regardless, and unconditionally — protect-paths.sh ignores both `active` and `enforcement` for those.",
+
+  "test_paths": [],
+  "$comment_test_paths": "Extra glob patterns counted as test files during the `test` phase, on top of the built-in conventions (*.test.*, *_test.*, */tests/*, */spec/*, ...). Needed where tests live beside the code: Rust in-file #[test] modules want [\"src/**/*.rs\"].",
+
+  "artifact_freshness": 1800,
+  "$comment_artifact_freshness": "Seconds. How recently an agent whose filename isn't predictable (finding-verifier, researcher) must have written for the artifact gate to accept it. Stops a leftover file from an earlier round satisfying the gate.",
+
+  "tier_thresholds": { "quick": 15, "standard": 35, "full": 60 },
+  "$comment_tier_thresholds": "Risk score cut-offs for .claude/bin/tier.sh. Below `quick` = work directly, no pipeline. Lower them to route more work through review; raise them if the pipeline fires on changes that don't need it.",
+
+  "auto_advance": true,
+  "$comment_auto_advance": "Advance state.json `phase` automatically when an agent lands a valid artifact. Only ever runs after the artifact gate passes, so it can't advance through a failed gate. Turn off to drive phases by hand.",
+
+  "backstop_threshold": 3,
+  "$comment_backstop_threshold": "Distinct source files a session may change with no run active before the user-level backstop (~/.claude/hooks/harness-backstop.sh) interrupts once and suggests /build-pipeline. Raise it if you do a lot of ad-hoc work here; `touch .harness/.bypass` disables it for this repo entirely.",
+
+  "max_rounds": 3,
+  "$comment_max_rounds": "Review -> revise cycles before escalating to the human. Loops that can't converge in three rounds usually have a plan problem, not a code problem."
+}

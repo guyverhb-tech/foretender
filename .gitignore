@@ -1,0 +1,17 @@
+.env
+.env.local
+.env.*.local
+node_modules/
+.DS_Store
+*.log
+.vercel
+dist/
+build/
+.next/
+coverage/
+
+# build harness (config + ledger are committed, runtime state is not)
+.harness/*
+!.harness/config.json
+!.harness/README.md
+!.harness/decisions.md

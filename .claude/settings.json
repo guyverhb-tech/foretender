@@ -1,0 +1,79 @@
+{
+  "$comment": "Harness hook wiring. All hooks except protect-paths.sh no-op unless .harness/state.json has active:true. protect-paths.sh is unconditional by design: its guardrails (secrets, .git, destructive git, curl|sh) are about the repository, not the pipeline, and apply between runs too. Safe to commit.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/protect-paths.sh",
+            "timeout": 15,
+            "statusMessage": "Checking guardrails..."
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/phase-gate.sh",
+            "timeout": 15,
+            "statusMessage": "Checking phase..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/validate-change.sh",
+            "timeout": 150,
+            "statusMessage": "Validating change..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-gate.sh",
+            "timeout": 600,
+            "statusMessage": "Verifying the tree..."
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "scout|researcher|planner|plan-critic|test-author|builder|code-critic|critic-correctness|critic-integration|critic-security|critic-simplicity|finding-verifier|adjudicator|reviser|qa|integrator|reporter",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/artifact-gate.sh",
+            "timeout": 20,
+            "statusMessage": "Checking artifact..."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact|fork",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/session-context.sh",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
