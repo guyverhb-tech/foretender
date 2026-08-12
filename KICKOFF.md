@@ -93,7 +93,7 @@ Henry reviews the findings file before any Phase 1 code exists. Supervised.
 **Step 4 — First Phase 1 change through `/build-pipeline`, supervised**
 This run is the harness's first end-to-end outing and the validation run that has
 been gating overnight mode. Size it deliberately small — the smallest ingestion
-slice consistent with the brief (indicatively: one UTC day of releases via cursor
+slice consistent with the brief (indicatively: one Europe/London day of releases via cursor
 pagination, stored raw and append-only, idempotent on re-run, `Retry-After`
 honoured, junk quarantined not dropped). Final scoping happens after the Phase 0
 findings are reviewed, not before.

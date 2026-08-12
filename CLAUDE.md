@@ -13,14 +13,17 @@ autonomous agents; the supplier-facing product is secondary). Predictions are
 recorded in advance with confidence and an expected resolution date, then graded
 against subsequent published notices.
 
-**Read `BUILD_BRIEF.md` and `KICKOFF.md` in full before any work. Where they
-conflict, KICKOFF.md wins (it is later). Phase gates and scope limits live
-there, not here.**
+**Read `BUILD_BRIEF.md`, `KICKOFF.md`, `PHASE0_FINDINGS.md`, and
+`PHASE1_INVARIANTS.md` before any work. Where the briefs conflict, KICKOFF.md
+wins (it is later); on data facts the precedence is PHASE0_FINDINGS.md >
+KICKOFF §2 > BUILD_BRIEF §4 (set at the Phase 0 review, 2026-08-12).
+`PHASE1_INVARIANTS.md` is builder-facing law. Phase gates and scope limits
+live in the briefs, not here.**
 
 ## Stack
 
-- Not yet chosen — deliberately (KICKOFF §1.4). A runtime recommendation is due
-  at the Phase 0 findings review; do not resolve this silently.
+- TypeScript on Node.js (LTS), strict mode — decided by Henry at the Phase 0
+  review (2026-08-12), per the recommendation in `PHASE0_FINDINGS.md`.
 - Data source: FTS OCDS release API only (OCDS 1.1.5 + OCP extensions).
 - Deploy: none yet (brief §8 — no deployment infrastructure).
 
@@ -61,9 +64,13 @@ padding it — a convention nobody follows is worse than none.>
   retrofitted (brief §5.3).
 - Lifecycle state derives locally from the release stream; the
   `ocdsRecordPackages` endpoint is not depended on (KICKOFF §2).
-- Anything marked ASSUMED in the briefs is unverified. Phase 0 closes the list;
-  pipeline-notice volume is the named kill-risk — if it's rare, stop and
-  escalate, don't adapt (brief §4, §7).
+- Anything marked ASSUMED in the briefs is unverified. Phase 0 closed the list
+  (PHASE0_FINDINGS.md, 2026-08-12): kill-risk GO — Act-regime planning notices
+  run ~222/week.
+- Ingestion is whole-stream only. The API's `stages=` filter silently excludes
+  the entire Act regime and all update/amendment tags (PHASE0_FINDINGS,
+  independently verified). Never use `stages=` where completeness matters.
+- Data-fact precedence: PHASE0_FINDINGS.md > KICKOFF §2 > BUILD_BRIEF §4.
 
 ---
 
