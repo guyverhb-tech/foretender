@@ -211,6 +211,156 @@ fresh_artifact_in() {
   return 0
 }
 
+# --- Artifact validation + phase advance -----------------------------------
+# Shared by the SubagentStop hook (artifact-gate.sh, for `claude --agent` CLI
+# subagents) AND by the orchestrator's bin/advance-phase.sh. The orchestrator
+# path exists because SubagentStop does NOT fire for Agent-tool (Task) subagent
+# spawns — verified empirically 2026-08-13 (a capture at the top of the hook
+# never ran for a matching `scout` spawn), despite the docs claiming it should.
+# Keeping the logic here means the two callers can never drift.
+
+# harness_artifact_path <agent> -> canonical artifact path, or "" for agents
+# whose artifact name isn't fixed (finding-verifier, researcher) or that owe none.
+harness_artifact_path() {
+  local H="$HARNESS_DIR"
+  case "$1" in
+    scout)              printf '%s' "$H/scout.md" ;;
+    planner)            printf '%s' "$H/plan.md" ;;
+    plan-critic)        printf '%s' "$H/plan-critique.md" ;;
+    test-author)        printf '%s' "$H/test-plan.md" ;;
+    builder)            printf '%s' "$H/build-log.md" ;;
+    code-critic)        printf '%s' "$H/review.md" ;;
+    critic-correctness) printf '%s' "$H/findings/correctness.md" ;;
+    critic-integration) printf '%s' "$H/findings/integration.md" ;;
+    critic-security)    printf '%s' "$H/findings/security.md" ;;
+    critic-simplicity)  printf '%s' "$H/findings/simplicity.md" ;;
+    adjudicator)        printf '%s' "$H/worklist.md" ;;
+    reviser)            printf '%s' "$H/revision-log.md" ;;
+    qa)                 printf '%s' "$H/qa-report.md" ;;
+    integrator)         printf '%s' "$H/integration-log.md" ;;
+    reporter)           printf '%s' "$H/handoff.md" ;;
+    *)                  printf '' ;;
+  esac
+}
+
+# Which artifacts must carry a machine-readable VERDICT block.
+harness_needs_verdict() {
+  case "$1" in
+    plan-critic|code-critic|critic-correctness|critic-integration|critic-security|\
+    critic-simplicity|adjudicator|qa) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# harness_artifact_reason <agent> — prints a human-actionable failure reason to
+# stdout and returns 1 when the agent's artifact is missing/empty/verdict-less;
+# returns 0 (silent) when the artifact is valid, when an unpredictably-named
+# artifact (verdict/research) is freshly present, or when the agent owes none.
+harness_artifact_reason() {
+  local AGENT="$1" H="$HARNESS_DIR" REQ base
+  case "$AGENT" in
+    finding-verifier)
+      fresh_artifact_in "$H/findings/verdicts" 1 && return 0
+      printf '%s' "finding-verifier finished without writing a fresh verdict to \
+.harness/findings/verdicts/<FINDING-ID>.md. Write the file named for the finding you were assigned, \
+ending with a VERDICT block whose 'result:' is CONFIRMED, REFUTED, or UNCERTAIN."
+      return 1 ;;
+    researcher)
+      fresh_artifact_in "$H/research" 0 && return 0
+      printf '%s' "researcher finished without writing .harness/research/<topic>.md. \
+The planner reads that file — a summary in the reply doesn't reach it."
+      return 1 ;;
+  esac
+  REQ="$(harness_artifact_path "$AGENT")"
+  [ -n "$REQ" ] || return 0            # not a pipeline agent → nothing to check
+  base="${REQ#"${CLAUDE_PROJECT_DIR:-$PWD}"/}"
+  if [ ! -f "$REQ" ]; then
+    printf '%s' "$AGENT finished without writing $base. That file is the handoff to the next phase — \
+a summary in the reply doesn't reach it. Write the artifact in the format your instructions specify, then finish."
+    return 1
+  fi
+  if [ "$(wc -c < "$REQ" 2>/dev/null || echo 0)" -lt 120 ]; then
+    printf '%s' "$AGENT wrote $base but it is essentially empty. Write the real content in the structure your instructions specify."
+    return 1
+  fi
+  if harness_needs_verdict "$AGENT" && ! has_verdict "$REQ"; then
+    printf '%s' "$AGENT wrote $base without a machine-readable VERDICT block. Append one as the last thing in the file \
+(critics: APPROVED / CHANGES_REQUIRED — adjudicator: SHIP / REVISE / REPLAN — qa: PASS / PASS_WITH_ISSUES / FAIL). \
+The orchestrator and the gates parse this; without it the pipeline can't advance."
+    return 1
+  fi
+  return 0
+}
+
+# rostered <agent> — is this agent in state.json's roster?
+harness_rostered() { case " $(harness_roster) " in *" $1 "*) return 0 ;; *) return 1 ;; esac }
+
+# The parallel critic panel: advance to adjudicate only once EVERY rostered lens
+# has landed a verdict-bearing findings file, so the first to finish can't move
+# the phase out from under the others.
+harness_panel_complete() {
+  local lens f H="$HARNESS_DIR"
+  for lens in correctness integration security simplicity; do
+    if harness_rostered "critic-$lens"; then
+      f="$H/findings/$lens.md"
+      { [ -f "$f" ] && has_verdict "$f"; } || return 1
+    fi
+  done
+  return 0
+}
+
+# harness_next_phase <agent> — echoes the phase to advance to given the agent and
+# its artifact's verdict, or "" when there is no unambiguous successor (a lens
+# before the panel is complete; finding-verifier/researcher; unknown agent).
+harness_next_phase() {
+  local AGENT="$1" REQ STATUS
+  REQ="$(harness_artifact_path "$AGENT")"
+  [ -n "$REQ" ] && STATUS="$(verdict_field "$REQ" status)"
+  case "$AGENT" in
+    scout)   harness_rostered researcher && printf 'research' || printf 'plan' ;;
+    planner) printf 'plan-review' ;;
+    plan-critic)
+      case "$STATUS" in
+        APPROVED)         harness_rostered test-author && printf 'test' || printf 'build' ;;
+        CHANGES_REQUIRED) printf 'plan' ;;
+      esac ;;
+    test-author) printf 'build' ;;
+    builder)     printf 'review' ;;
+    critic-correctness|critic-integration|critic-security|critic-simplicity)
+      harness_panel_complete && printf 'adjudicate' ;;
+    code-critic)
+      case "$STATUS" in APPROVED) printf 'qa' ;; CHANGES_REQUIRED) printf 'revise' ;; esac ;;
+    adjudicator)
+      case "$STATUS" in SHIP) printf 'qa' ;; REVISE) printf 'revise' ;; REPLAN) printf 'plan' ;; esac ;;
+    reviser) printf 'review' ;;
+    qa)
+      case "$STATUS" in
+        PASS|PASS_WITH_ISSUES) harness_rostered integrator && printf 'integrate' || printf 'done' ;;
+        FAIL)                  printf 'revise' ;;
+      esac ;;
+    integrator) printf 'done' ;;
+  esac
+}
+
+# harness_do_advance <agent> — compute + apply the next phase, print the
+# transition to stderr, handle the reviser's round bump + verdict clear. No-op if
+# auto_advance is off or there's no unambiguous next phase. Reached only after
+# harness_artifact_reason returned 0, so it can't advance through a failed gate.
+harness_do_advance() {
+  local AGENT="$1" H="$HARNESS_DIR" PHASE NEXT R
+  [ "$(cfg auto_advance true)" = "true" ] || return 0
+  PHASE="$(harness_phase)"
+  NEXT="$(harness_next_phase "$AGENT")"
+  [ -n "$NEXT" ] && [ "$NEXT" != "$PHASE" ] || return 0
+  state_set phase "$NEXT" || return 1
+  if [ "$AGENT" = "reviser" ]; then
+    R="$(harness_round)"; state_set round "$(( ${R:-1} + 1 ))"
+    rm -f "$H"/findings/verdicts/*.md 2>/dev/null
+  fi
+  printf 'HARNESS: phase %s -> %s (after %s)\n' "$PHASE" "$NEXT" "$AGENT" >&2
+  return 0
+}
+
 # --- Stack detection -------------------------------------------------------
 # Cheap and cached. Used to pick per-file validators when config doesn't say.
 detect_pm() {

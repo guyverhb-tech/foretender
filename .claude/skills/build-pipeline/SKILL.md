@@ -156,24 +156,53 @@ why — one line each. If they want a different shape, take it.
 
 ## Phase machine
 
-**The phase advances itself.** When an agent lands a valid artifact, the
-`SubagentStop` gate reads its verdict and writes the next phase — including the
-branches (`plan-critic: CHANGES_REQUIRED` → back to `plan`, `qa: FAIL` → back to
-`revise`), the panel barrier (it waits for every rostered lens before moving to
-`adjudicate`), and the round counter. It only ever runs *after* the artifact gate
-passes, so it can't advance through a failed gate.
+**You advance the phase, by calling `advance-phase.sh` after each agent lands.**
 
-What's still yours to write:
+```bash
+.claude/bin/advance-phase.sh <agent_type>     # e.g. planner, plan-critic, qa
+```
+
+It validates that agent's artifact (present, non-empty, VERDICT block where one is
+required) and *then* advances `.harness/state.json` `phase` — including the
+branches (`plan-critic: CHANGES_REQUIRED` → back to `plan`, `qa: FAIL` → back to
+`revise`), the panel barrier (it holds at `review` until every rostered lens has
+landed a verdict-bearing findings file), and the reviser's round-counter bump +
+verdict-clear. Because it validates first, it can never advance through a missing
+or verdict-less artifact — the same guarantee the old `SubagentStop` gate gave.
+
+- **Exit 0** — artifact valid; phase advanced, or intentionally held (a lens
+  before the panel completes; `finding-verifier`/`researcher`, which never
+  advance; no defined successor). It prints `HARNESS: phase X -> Y (after <agent>)`
+  to stderr on a real move.
+- **Exit 3** — artifact missing/empty/verdict-less. It prints the reason. **Do not
+  advance** — re-dispatch that agent to finish its artifact, exactly as the
+  blocking gate would have forced.
+
+> **Why this, and not the hook.** The `SubagentStop` artifact-gate hook does **not
+> fire for Agent-tool (Task) subagent spawns** — verified empirically 2026-08-13
+> (a capture placed at the very top of `artifact-gate.sh` never ran for a matching
+> `scout` spawn; the docs claim it should, but it does not). This orchestrator
+> spawns every agent via the Agent tool, so the hook can't drive the machine.
+> `advance-phase.sh` and the hook share the same validate+advance code in
+> `hooks/lib/harness.sh`, so they can't drift; the hook stays for the
+> `claude --agent` CLI path and as defence in depth. If a future Claude Code
+> version makes SubagentStop fire for Agent-tool spawns, calling the script is
+> idempotent-safe (it just advances a phase that's already correct to the same
+> value — a no-op).
+
+What's still yours to write directly:
 
 - `active: true`, `task`, and `roster` at the start of a run. **The roster matters
-  to the machine, not just to you** — auto-advance reads it to decide whether
+  to the advance logic, not just to you** — it reads the roster to decide whether
   `plan-critic: APPROVED` goes to `test` or straight to `build`, and which lenses
-  it waits for.
-- The phases no agent finishes: `brief`, and `scout`/`research` when you skip them.
+  the panel barrier waits for.
+- The phases no agent finishes: `brief`, and `scout`/`research` when you skip them
+  (advance those by hand — `advance-phase.sh` only moves off an agent that owes an
+  artifact).
 - `active: false` at the end.
 
-Read the phase back after each agent rather than assuming it — that's the
-authoritative record of where the run is.
+Read the phase back (`advance-phase.sh` prints it, or read `state.json`) after each
+agent rather than assuming it — that's the authoritative record of where the run is.
 
 Track phases with `TodoWrite` so the user can see the run's shape.
 
