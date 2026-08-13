@@ -257,8 +257,20 @@ harness_needs_verdict() {
 # returns 0 (silent) when the artifact is valid, when an unpredictably-named
 # artifact (verdict/research) is freshly present, or when the agent owes none.
 harness_artifact_reason() {
-  local AGENT="$1" H="$HARNESS_DIR" REQ base
+  local AGENT="$1" H="$HARNESS_DIR" REQ base f
   case "$AGENT" in
+    integrator)
+      # Canonical name is integration-log.md, but integrators have drifted to
+      # integration-report.md in live runs; either satisfies the gate. Existence
+      # + size only — harness_needs_verdict is false for the integrator.
+      for f in "$H/integration-log.md" "$H/integration-report.md"; do
+        [ -f "$f" ] && [ "$(wc -c < "$f" 2>/dev/null || echo 0)" -ge 120 ] && return 0
+      done
+      printf '%s' "integrator finished without writing .harness/integration-log.md \
+(or its accepted alias integration-report.md), or wrote it essentially empty. That file is the handoff to the next \
+phase — a summary in the reply doesn't reach it. Write .harness/integration-log.md in the format your instructions \
+specify, then finish."
+      return 1 ;;
     finding-verifier)
       fresh_artifact_in "$H/findings/verdicts" 1 && return 0
       printf '%s' "finding-verifier finished without writing a fresh verdict to \
