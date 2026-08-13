@@ -336,3 +336,47 @@ export function createRawStore(rootDir: string, opts?: { now?: () => number }): 
     },
   };
 }
+
+/** A body file name is a sha-256 hex digest and nothing else. */
+const SHA256_HEX = /^[0-9a-f]{64}$/;
+
+/**
+ * The store's read surface, additive to `createRawStore` (plan step 3): the
+ * projection reuses these rather than re-implementing raw reading. Neither
+ * mutates the store; both are pure reads over the append-only files.
+ *
+ * Scan `releases.ndjson` and return each accepted release's identity — the same
+ * scan `beginRun` does to seed its snapshot (this file, above), exposed for a
+ * reader that has no run open.
+ */
+export function readAcceptedReleases(rootDir: string): AcceptedRelease[] {
+  const releasesFile = join(rootDir, 'releases.ndjson');
+  const out: AcceptedRelease[] = [];
+  if (!existsSync(releasesFile)) return out;
+  for (const line of readFileSync(releasesFile, 'utf8').split('\n')) {
+    if (line.trim() === '') continue;
+    const rec = JSON.parse(line) as AcceptedRelease;
+    out.push({ id: rec.id, ocid: rec.ocid, bodyHash: rec.bodyHash });
+  }
+  return out;
+}
+
+/**
+ * Read a content-addressed body by hash, failing loud on tampering — mirrors
+ * `replay.ts`'s check: reject a non-64-hex `bodyHash`, read the bytes, and
+ * throw if they do not re-hash to the recorded digest ("store tampered or
+ * corrupt") rather than feed a coerced record downstream.
+ */
+export function readPageBody(rootDir: string, bodyHash: string): Uint8Array {
+  if (!SHA256_HEX.test(bodyHash)) {
+    throw new Error(`readPageBody: bodyHash is not a sha-256 hex digest: «${bodyHash}»`);
+  }
+  const body = new Uint8Array(readFileSync(join(rawPagesDir(rootDir), bodyHash)));
+  const actualHash = createHash('sha256').update(body).digest('hex');
+  if (actualHash !== bodyHash) {
+    throw new Error(
+      `readPageBody: body for ${bodyHash} hashes to ${actualHash} (store tampered or corrupt)`,
+    );
+  }
+  return body;
+}

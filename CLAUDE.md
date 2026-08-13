@@ -45,6 +45,12 @@ node dist/cli/fetch-day.js [--day YYYY-MM-DD] [--store DIR]
 # The range is INCLUSIVE of both endpoints; pacing carries across day
 # boundaries, so a three-day catch-up is ~16 requests over a few minutes.
 node dist/cli/backfill.js --from YYYY-MM-DD --to YYYY-MM-DD [--store DIR]
+
+# Project an existing raw store's tender-tagged releases into a deterministic
+# canonical model, rebuilding <store>/canonical.ndjson and anomalies.ndjson and
+# printing a summary (regime split, anomaly count + rate, per-regime coverage).
+# Offline: reads only existing raw data, makes no network requests.
+node dist/cli/normalise.js [--store DIR]
 ```
 
 Only the default `data/` store is gitignored (anchored to the repo root). A
@@ -80,7 +86,13 @@ itself, scoped to one run — the newest, or an explicit `runId`, since the
 append-only journal accumulates a run per recorded day). `src/cli/fetch-day.ts`
 (one day) and `src/cli/backfill.ts` (a day range) are the thin live shells, both
 wiring the shared live transport from `src/cli/live-deps.ts` — the only file
-that touches global fetch. Contract tests in `test/` replay the real
+that touches global fetch. `src/normalise/` is the offline canonical projection —
+`model.ts` (the canonical tender shape + anomaly types), `normalise.ts` (the pure
+per-release normaliser, sibling to `validate.ts`), and `project.ts`
+(`projectTenders` — the deterministic full rebuild of `canonical.ndjson`/
+`anomalies.ndjson` over an existing raw store); `src/cli/normalise.ts`
+(`node dist/cli/normalise.js [--store DIR]`) is its thin shell and touches no
+network. Contract tests in `test/` replay the real
 recorded pages committed under `test/fixtures/` (never edit those; see
 `test/fixtures/README.md`). `data/` is the gitignored store.
 
