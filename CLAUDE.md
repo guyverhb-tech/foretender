@@ -51,6 +51,13 @@ node dist/cli/backfill.js --from YYYY-MM-DD --to YYYY-MM-DD [--store DIR]
 # printing a summary (regime split, anomaly count + rate, per-regime coverage).
 # Offline: reads only existing raw data, makes no network requests.
 node dist/cli/normalise.js [--store DIR]
+
+# Reconstruct every procurement's lifecycle from the raw store's releases of ALL
+# types (not just tenders), rebuilding <store>/lifecycles.ndjson and
+# lifecycle-anomalies.ndjson and printing a summary (state distribution, anomaly
+# count + rate, orphan/skipped counts).
+# Offline: reads only existing raw data, makes no network requests.
+node dist/cli/lifecycle.js [--store DIR]
 ```
 
 Only the default `data/` store is gitignored (anchored to the repo root). A
@@ -92,6 +99,14 @@ per-release normaliser, sibling to `validate.ts`), and `project.ts`
 (`projectTenders` — the deterministic full rebuild of `canonical.ndjson`/
 `anomalies.ndjson` over an existing raw store); `src/cli/normalise.ts`
 (`node dist/cli/normalise.js [--store DIR]`) is its thin shell and touches no
+network. `src/lifecycle/` is the offline lifecycle projection — a sibling layer
+that reconstructs a per-`ocid` procurement lifecycle across ALL release types:
+`model.ts` (the lifecycle event/state + anomaly types), `event.ts` (the pure
+per-release event extractor), `machine.ts` (the pure zero-I/O state machine —
+`sortEvents`/`reconstructOne`/`reconstructMany`), and `project.ts`
+(`projectLifecycles` — the deterministic full rebuild of `lifecycles.ndjson`/
+`lifecycle-anomalies.ndjson` over an existing raw store); `src/cli/lifecycle.ts`
+(`node dist/cli/lifecycle.js [--store DIR]`) is its thin shell and touches no
 network. Contract tests in `test/` replay the real
 recorded pages committed under `test/fixtures/` (never edit those; see
 `test/fixtures/README.md`). `data/` is the gitignored store.

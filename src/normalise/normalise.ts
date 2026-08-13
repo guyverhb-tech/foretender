@@ -54,7 +54,7 @@ function makeAnomaly(
  * the run — the release still fails loud at the intended point (an empty CPV list
  * fires `missing-cpv`; a non-scalar scheme falls to the `unknown-regime` anomaly).
  */
-function safeStr(value: unknown): string | null {
+export function safeStr(value: unknown): string | null {
   if (typeof value === 'string') return value;
   if (typeof value === 'number' || typeof value === 'bigint') return String(value);
   return null;
