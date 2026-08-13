@@ -9,6 +9,11 @@ dist/
 build/
 .next/
 coverage/
+# Anchored to the repo root: an unanchored `data/` ignores a `data` directory
+# at ANY depth (e.g. a future src/data/ or test/fixtures/data/), silently
+# dropping it from commits. Non-default --store roots must live under an
+# ignored path too — see CLAUDE.md "Running it".
+/data/
 
 # build harness (config + ledger are committed, runtime state is not)
 .harness/*

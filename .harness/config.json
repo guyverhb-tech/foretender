@@ -20,11 +20,11 @@
   "$comment_validate_on_write": "Format + lint the touched file after each write. Set typecheck_on_write false in large repos where a project-wide tsc is slow.",
 
   "verify": {
-    "$comment": "Leave a key empty to auto-detect from package.json scripts / go.mod / Cargo.toml.",
-    "typecheck": "",
+    "$comment": "Leave a key empty to auto-detect from package.json scripts / go.mod / Cargo.toml. lint deliberately empty: brief req 1 scopes the scaffold to typecheck/test (plan Open questions).",
+    "typecheck": "npm run typecheck",
     "lint": "",
-    "test": "",
-    "build": ""
+    "test": "npm test",
+    "build": "npm run build"
   },
 
   "protected": [],

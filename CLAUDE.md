@@ -30,24 +30,48 @@ live in the briefs, not here.**
 ## Running it
 
 ```bash
-# Nothing runs yet. Phase 0 is research, not code.
+npm install
+npm run build
+
+# Fetch one Europe/London day (default: yesterday) into data/.
+# Politely paced: >=13 s between requests, Retry-After honoured — a typical
+# day is ~4-5 requests, so expect ~60-90 s. Re-running the same day is
+# idempotent and reports "0 new releases".
+node dist/cli/fetch-day.js [--day YYYY-MM-DD] [--store DIR]
 ```
+
+Only the default `data/` store is gitignored (anchored to the repo root). A
+non-default `--store DIR` writes raw API bodies and a journal carrying recorded
+response headers — never commit those. Point `--store` at a path under `data/`
+(e.g. `--store data/run2`) or another already-ignored location.
 
 ## Verify
 
 ```bash
-# No verify commands yet — set these when the runtime is chosen, and mirror
-# them in .harness/config.json and CI at that point.
+npm run typecheck
+npm test          # fixture-only contract tests; zero network by construction
+npm run build
 ```
 
-These are the commands the harness gate and CI both run. Keep them working — when
-one of them is broken or missing, every automated check downstream quietly does
-less than it appears to.
+These are the commands the harness verify gate runs (mirrored in
+`.harness/config.json`). There is no CI yet — a workflow is /ship's job, after
+this slice. Keep them working — when one of them is broken or missing, every
+automated check downstream quietly does less than it appears to.
 
 ## Layout
 
-<Fill in once there's structure worth describing. Where the interesting code
-lives, not a directory listing.>
+The ingest seam lives in `src/ingest/` — `window.ts` (London-day windows,
+19-char local datetimes), `validate.ts` (identity-only validation), and
+`ingest.ts` (the cursor-pagination walk; all I/O injected). `src/store/` is the
+raw append-only store: `raw-store.ts` (NDJSON journal + content-addressed body
+bytes under `data/raw/`, plus the releases/quarantine projections) and
+`replay.ts` (journal-backed transport that re-runs a recorded walk through
+`ingestWindow` itself, scoped to one run — the newest, or an explicit `runId`,
+since the append-only journal accumulates a run per recorded day).
+`src/cli/fetch-day.ts` is the thin live shell — the
+only file that touches global fetch. Contract tests in `test/` replay the real
+recorded pages committed under `test/fixtures/` (never edit those; see
+`test/fixtures/README.md`). `data/` is the gitignored store.
 
 ## Conventions
 
