@@ -1,18 +1,16 @@
 /**
- * Live CLI thin shell (brief req 8): argument parsing plus construction of
- * the real transport and real sleep, over the identical `ingestWindow` path
- * the contract tests exercise. This is the ONLY file in the repo that
- * references global fetch.
+ * Live CLI thin shell (brief req 8): argument parsing plus wiring the shared
+ * live transport and sleep (from `live-deps.ts`, the repo's only global-fetch
+ * site) into the identical `ingestWindow` path the contract tests exercise.
  *
  * Politeness (invariant #3): ≥13 s between requests, Retry-After honoured —
  * a one-day window is ~4–5 requests, so a run takes ~60–90 s.
  */
 import { parseArgs } from 'node:util';
-import { ingestWindow, IngestError, type Transport } from '../ingest/ingest.js';
+import { ingestWindow, IngestError } from '../ingest/ingest.js';
 import { londonDayWindow } from '../ingest/window.js';
 import { createRawStore, type RunSummary } from '../store/raw-store.js';
-
-const USER_AGENT = 'foretender/0.1 (contact: guyverhb@gmail.com)';
+import { USER_AGENT, liveTransport, sleep } from './live-deps.js';
 
 /**
  * Strip C0/C1 control characters before printing store-derived strings (a
@@ -41,24 +39,6 @@ Options:
 
 Requests are paced >=13 s apart and Retry-After is honoured; expect ~60-90 s
 for a typical day.`;
-
-const liveTransport: Transport = async (url) => {
-  // redirect: 'manual' (S-m1): a 30x must not silently relocate the walk to
-  // another host after the origin check in ingest — a 3xx falls through the
-  // status !== 200 path and fails loudly, journaled.
-  const response = await fetch(url, {
-    headers: { 'user-agent': USER_AGENT },
-    redirect: 'manual',
-  });
-  const body = new Uint8Array(await response.arrayBuffer());
-  const headers: Record<string, string> = {};
-  response.headers.forEach((value, key) => {
-    headers[key] = value;
-  });
-  return { status: response.status, headers, body };
-};
-
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 function printSummaryLine(prefix: string, summary: RunSummary): void {
   console.log(

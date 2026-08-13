@@ -38,6 +38,13 @@ npm run build
 # day is ~4-5 requests, so expect ~60-90 s. Re-running the same day is
 # idempotent and reports "0 new releases".
 node dist/cli/fetch-day.js [--day YYYY-MM-DD] [--store DIR]
+
+# Back-fill a contiguous range of Europe/London days, oldest-first and
+# resumably: an interrupted re-run over the same range skips days already
+# marked complete (persisted in checkpoints.ndjson) and ingests only the rest.
+# The range is INCLUSIVE of both endpoints; pacing carries across day
+# boundaries, so a three-day catch-up is ~16 requests over a few minutes.
+node dist/cli/backfill.js --from YYYY-MM-DD --to YYYY-MM-DD [--store DIR]
 ```
 
 Only the default `data/` store is gitignored (anchored to the repo root). A
@@ -61,15 +68,19 @@ automated check downstream quietly does less than it appears to.
 ## Layout
 
 The ingest seam lives in `src/ingest/` — `window.ts` (London-day windows,
-19-char local datetimes), `validate.ts` (identity-only validation), and
-`ingest.ts` (the cursor-pagination walk; all I/O injected). `src/store/` is the
-raw append-only store: `raw-store.ts` (NDJSON journal + content-addressed body
-bytes under `data/raw/`, plus the releases/quarantine projections) and
-`replay.ts` (journal-backed transport that re-runs a recorded walk through
-`ingestWindow` itself, scoped to one run — the newest, or an explicit `runId`,
-since the append-only journal accumulates a run per recorded day).
-`src/cli/fetch-day.ts` is the thin live shell — the
-only file that touches global fetch. Contract tests in `test/` replay the real
+19-char local datetimes, plus `londonDayRange` for a backfill's day list),
+`validate.ts` (identity-only validation), `ingest.ts` (the cursor-pagination
+walk; all I/O injected), and `backfill.ts` (`runBackfill` — the resumable
+multi-day loop over `ingestWindow`, gated by the store's day-completion
+checkpoint; no new I/O). `src/store/` is the raw append-only store:
+`raw-store.ts` (NDJSON journal + content-addressed body bytes under `data/raw/`,
+plus the releases/quarantine/checkpoints projections) and `replay.ts`
+(journal-backed transport that re-runs a recorded walk through `ingestWindow`
+itself, scoped to one run — the newest, or an explicit `runId`, since the
+append-only journal accumulates a run per recorded day). `src/cli/fetch-day.ts`
+(one day) and `src/cli/backfill.ts` (a day range) are the thin live shells, both
+wiring the shared live transport from `src/cli/live-deps.ts` — the only file
+that touches global fetch. Contract tests in `test/` replay the real
 recorded pages committed under `test/fixtures/` (never edit those; see
 `test/fixtures/README.md`). `data/` is the gitignored store.
 

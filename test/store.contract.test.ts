@@ -11,10 +11,12 @@ import {
 } from './helpers/fixture-transport.js';
 import {
   ISO_WITH_OFFSET,
+  checkpointsPath,
   httpRecords,
   journalPath,
   makeVirtualClock,
   pagesDir,
+  readCheckpoints,
   readJournal,
   readQuarantine,
   readReleases,
@@ -329,5 +331,59 @@ describe('raw append-only store', () => {
       id: '076460-2026',
       date: '2026-08-11T23:36:44+01:00',
     });
+  });
+
+  // Day-completion checkpoint projection (plan step 3, the direct unit contract
+  // the test-author delegated here). The record is written AFTER endRun, so it
+  // must not depend on an active run; its identity is the `day` key alone; it
+  // carries no runId (there is no live run at write time).
+  const dayMeta = { window: WINDOW, accepted: 459, seen: 459, alreadyPresent: 0, quarantined: 0 };
+
+  it('marks a day complete with NO active run and is idempotent by the day key', async () => {
+    const store = createRawStore(root, { now: clock.now });
+    // Deliberately no beginRun: a day-completion fact is recorded post-endRun.
+    await store.markDayComplete('2026-08-10', dayMeta);
+    expect((await store.completedDays()).has('2026-08-10')).toBe(true);
+    expect(readCheckpoints(root)).toHaveLength(1);
+
+    const afterFirst = readFileSync(checkpointsPath(root));
+    // Re-marking the same day appends nothing — one record per day across calls.
+    await store.markDayComplete('2026-08-10', dayMeta);
+    expect(readCheckpoints(root)).toHaveLength(1);
+    expect(readFileSync(checkpointsPath(root)).equals(afterFirst)).toBe(true);
+  });
+
+  it('re-scans completed days across store instances sharing a root', async () => {
+    const storeA = createRawStore(root, { now: clock.now });
+    await storeA.markDayComplete('2026-08-10', dayMeta);
+    await storeA.markDayComplete('2026-08-11', { ...dayMeta, accepted: 496, seen: 496 });
+
+    // A fresh instance sees both days (the set is read from disk, not memory).
+    const storeB = createRawStore(root, { now: clock.now });
+    expect(await storeB.completedDays()).toEqual(new Set(['2026-08-10', '2026-08-11']));
+  });
+
+  it('stamps the checkpoint faithful to the clock, keeps the metadata, and carries no runId', async () => {
+    const store = createRawStore(root, { now: clock.now });
+    clock.advance(5_000);
+    await store.markDayComplete('2026-08-11', { ...dayMeta, accepted: 496, seen: 496 });
+
+    const [record] = readCheckpoints(root);
+    expect(record).toBeDefined();
+    // The stamp is a value the injected clock actually returned, at encodes it.
+    expect(new Set(clock.returned).has(record?.['epochMs'] as number)).toBe(true);
+    expect(record?.['epochMs']).toBe(T0 + 5_000);
+    expect(new Date(record?.['at'] as string).getTime()).toBe(record?.['epochMs']);
+    expect(record?.['at']).toMatch(ISO_WITH_OFFSET);
+    // Completion metadata is carried…
+    expect(record?.['day']).toBe('2026-08-11');
+    expect(record?.['window']).toEqual(WINDOW);
+    expect(record?.['accepted']).toBe(496);
+    expect(record?.['seen']).toBe(496);
+    expect(record?.['alreadyPresent']).toBe(0);
+    expect(record?.['quarantined']).toBe(0);
+    expect(record?.['v']).toMatch(/\S/);
+    // …but never a runId (there is no live run when a day is marked complete).
+    expect(record).not.toHaveProperty('runId');
   });
 });

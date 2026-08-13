@@ -74,3 +74,26 @@ export function londonDayWindow(opts?: { day?: string; now?: () => number }): Da
     updatedTo: `${shiftCalendarDay(day, 1)}T00:00:00`,
   };
 }
+
+/**
+ * The ordered list of London-day windows spanning `[from, to]` INCLUSIVE of
+ * both endpoints, oldest-first — the day sequence a backfill visits (brief req
+ * 6). Order is deterministic so interrupt/resume is well-defined ("resume from
+ * the oldest incomplete day"). Each element is produced through
+ * `londonDayWindow`, so a non-calendar bound is rejected the same way, and the
+ * walk is pure calendar arithmetic (DST changes a day's length, never its
+ * bounds). Throws a plain `Error` (pre-run validation style) on a malformed or
+ * non-calendar bound, or when `from` is later than `to`.
+ */
+export function londonDayRange(from: string, to: string): DayWindow[] {
+  const first = londonDayWindow({ day: from });
+  const last = londonDayWindow({ day: to });
+  if (first.day > last.day) {
+    throw new Error(`range start must not be after end, got «${from}»..«${to}»`);
+  }
+  const windows: DayWindow[] = [];
+  for (let day = first.day; day <= last.day; day = shiftCalendarDay(day, 1)) {
+    windows.push(londonDayWindow({ day }));
+  }
+  return windows;
+}

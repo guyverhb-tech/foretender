@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { londonDayWindow } from '../src/ingest/window.js';
+import { londonDayRange, londonDayWindow } from '../src/ingest/window.js';
 
 /**
  * London-day window computation (brief req 2, invariant #2, plan step 2).
@@ -74,5 +74,71 @@ describe('londonDayWindow', () => {
       updatedFrom: '2026-10-25T00:00:00',
       updatedTo: '2026-10-26T00:00:00',
     });
+  });
+});
+
+/**
+ * London-day RANGE iteration (brief req 6, plan step 2) — the ordered day list
+ * backfill visits. The range is INCLUSIVE of both endpoints and oldest-first
+ * (deterministic, so interrupt/resume is well-defined). Each element is a full
+ * DayWindow produced through the same per-day path as londonDayWindow, so a
+ * non-calendar bound is rejected the same way.
+ *
+ * Interface assumption (plan leaves the export unpinned):
+ *   londonDayRange(from: string, to: string): Array<{
+ *     day: string; updatedFrom: string; updatedTo: string }>
+ *   — inclusive, oldest-first; throws a plain Error on a malformed bound or
+ *   from > to. See .harness/test-plan.md §Interface assumptions.
+ */
+describe('londonDayRange', () => {
+  it('returns the inclusive range oldest-first, one full window per calendar day', () => {
+    expect(londonDayRange('2026-08-10', '2026-08-12')).toEqual([
+      { day: '2026-08-10', updatedFrom: '2026-08-10T00:00:00', updatedTo: '2026-08-11T00:00:00' },
+      { day: '2026-08-11', updatedFrom: '2026-08-11T00:00:00', updatedTo: '2026-08-12T00:00:00' },
+      { day: '2026-08-12', updatedFrom: '2026-08-12T00:00:00', updatedTo: '2026-08-13T00:00:00' },
+    ]);
+  });
+
+  it('is inclusive of both endpoints — a single-day range yields exactly that day', () => {
+    expect(londonDayRange('2026-08-11', '2026-08-11')).toEqual([
+      { day: '2026-08-11', updatedFrom: '2026-08-11T00:00:00', updatedTo: '2026-08-12T00:00:00' },
+    ]);
+  });
+
+  it('orders days ascending, each window abutting the next with no gap or overlap', () => {
+    const range = londonDayRange('2026-08-10', '2026-08-12');
+    expect(range.map((w) => w.day)).toEqual(['2026-08-10', '2026-08-11', '2026-08-12']);
+    for (let i = 1; i < range.length; i++) {
+      expect(range[i]?.updatedFrom).toBe(range[i - 1]?.updatedTo);
+    }
+  });
+
+  it('rolls the calendar over across a month boundary', () => {
+    // October has 31 days: 10-30, 10-31, then 11-01, 11-02.
+    expect(londonDayRange('2026-10-30', '2026-11-02').map((w) => w.day)).toEqual([
+      '2026-10-30',
+      '2026-10-31',
+      '2026-11-01',
+      '2026-11-02',
+    ]);
+  });
+
+  it('spans the autumn DST fall-back day with plain calendar days, no clock drift', () => {
+    // Clocks go back in London on 2026-10-25; the range is still whole calendar
+    // days, each local-midnight to local-midnight (no 01:00/23:00 drift).
+    expect(londonDayRange('2026-10-24', '2026-10-26')).toEqual([
+      { day: '2026-10-24', updatedFrom: '2026-10-24T00:00:00', updatedTo: '2026-10-25T00:00:00' },
+      { day: '2026-10-25', updatedFrom: '2026-10-25T00:00:00', updatedTo: '2026-10-26T00:00:00' },
+      { day: '2026-10-26', updatedFrom: '2026-10-26T00:00:00', updatedTo: '2026-10-27T00:00:00' },
+    ]);
+  });
+
+  it('rejects an inverted range (from later than to)', () => {
+    expect(() => londonDayRange('2026-08-12', '2026-08-10')).toThrow();
+  });
+
+  it('rejects a non-calendar or malformed bound', () => {
+    expect(() => londonDayRange('2026-02-30', '2026-03-02')).toThrow();
+    expect(() => londonDayRange('2026-08-10', 'not-a-date')).toThrow();
   });
 });

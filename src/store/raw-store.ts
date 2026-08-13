@@ -13,6 +13,9 @@
  *   raw/pages/<sha256>    — verbatim body bytes (extensionless; not always JSON)
  *   releases.ndjson       — identity-only projection: id, ocid, bodyHash, runId
  *   quarantine.ndjson     — offending record or bodyHash reference + reason
+ *   checkpoints.ndjson    — day-completion projection: one record per completed
+ *                           day, keyed on `day`, carrying NO runId (written
+ *                           after endRun, when no run is live)
  */
 import { createHash, randomUUID } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -124,6 +127,27 @@ export interface RawStore {
    */
   lastRequestEpochMs(): number | null;
   endRun(summary: RunSummary): void;
+  /**
+   * Records a London day as fully ingested — the append-only resume authority
+   * (brief req 2). Run-INDEPENDENT: a day's completion is a fact recorded AFTER
+   * `endRun` (when `run === null`), so this does NOT go through `activeRun()`
+   * and does NOT touch the frozen `quarantineKeys` set. Idempotent by the `day`
+   * key: a day already present appends nothing. The record carries no runId
+   * (there is no live run at write time; per-run provenance lives in the
+   * journal's run-start/run-end).
+   */
+  markDayComplete(
+    day: string,
+    meta: {
+      window: RunWindow;
+      accepted: number;
+      seen: number;
+      alreadyPresent: number;
+      quarantined: number;
+    },
+  ): void;
+  /** The set of days marked complete, re-scanned from `checkpoints.ndjson`. */
+  completedDays(): ReadonlySet<string>;
 }
 
 /** Code version stamped on every journal record as `v`. */
@@ -146,6 +170,7 @@ export function createRawStore(rootDir: string, opts?: { now?: () => number }): 
   const pagesDir = rawPagesDir(rootDir);
   const releasesFile = join(rootDir, 'releases.ndjson');
   const quarantineFile = join(rootDir, 'quarantine.ndjson');
+  const checkpointsFile = join(rootDir, 'checkpoints.ndjson');
 
   let run: ActiveRun | null = null;
 
@@ -164,6 +189,20 @@ export function createRawStore(rootDir: string, opts?: { now?: () => number }): 
 
   const appendJournal = (kind: string, runId: string, fields: Record<string, unknown>): void => {
     appendFileSync(journalFile, `${JSON.stringify({ kind, runId, ...stamp(), v: CODE_VERSION, ...fields })}\n`);
+  };
+
+  /** The completed-day set, re-scanned from disk so it is correct across store
+   * instances sharing a root (the backfill loop reads it once at the start). */
+  const readCompletedDays = (): Set<string> => {
+    const days = new Set<string>();
+    if (existsSync(checkpointsFile)) {
+      for (const line of readFileSync(checkpointsFile, 'utf8').split('\n')) {
+        if (line.trim() === '') continue;
+        const day = (JSON.parse(line) as { day?: unknown }).day;
+        if (typeof day === 'string') days.add(day);
+      }
+    }
+    return days;
   };
 
   return {
@@ -273,6 +312,27 @@ export function createRawStore(rootDir: string, opts?: { now?: () => number }): 
       const current = activeRun('endRun');
       appendJournal('run-end', current.runId, { ...summary });
       run = null;
+    },
+
+    markDayComplete(day, meta) {
+      // Run-independent (run === null at call time): keyed on `day`, idempotent
+      // by re-scan, no runId, no frozen-set involvement (see interface doc).
+      if (readCompletedDays().has(day)) return;
+      const record = {
+        day,
+        window: meta.window,
+        accepted: meta.accepted,
+        seen: meta.seen,
+        alreadyPresent: meta.alreadyPresent,
+        quarantined: meta.quarantined,
+        ...stamp(),
+        v: CODE_VERSION,
+      };
+      appendFileSync(checkpointsFile, `${JSON.stringify(record)}\n`);
+    },
+
+    completedDays() {
+      return readCompletedDays();
     },
   };
 }

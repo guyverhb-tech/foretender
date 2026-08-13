@@ -8,7 +8,7 @@
  * fails as "no fixture matches «url»", not as a TypeError deep in the walk.
  *
  * Bodies cross this boundary as bytes (Uint8Array), read from the fixture
- * files without decoding (critique M4). The JSON.parse in loadChainPage is
+ * files without decoding (critique M4). The JSON.parse in loadFixturePage is
  * test-side ROUTING only (to read `uri` / `links.next`); the body served to
  * the code under test stays the raw fixture bytes.
  *
@@ -16,7 +16,7 @@
  * not import from src/, so it cannot inherit assumptions from the
  * implementation it exists to test.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 export interface TransportResponse {
@@ -126,36 +126,37 @@ export interface FixturePage {
   pkg: PackagePage;
 }
 
-export function loadChainPage(name: string): FixturePage {
-  const exchange = exchangeFromFixture(
-    `whole-stream/${name}.json`,
-    `whole-stream/${name}.headers`,
-  );
-  // Test-side routing decode only — the served body stays raw bytes.
+/**
+ * Load one recorded page from `test/fixtures/<subdir>/<name>.{json,headers}`.
+ * The JSON.parse is test-side ROUTING decode only (to read `uri`/`links.next`);
+ * the served body stays raw fixture bytes (critique M4). `name` is stored
+ * subdir-qualified (e.g. `whole-stream/page-001`, `backfill/2026-08-11/page-003`)
+ * so a mis-chained fixture names itself — and, for a backfill page, its day.
+ */
+export function loadFixturePage(subdir: string, name: string): FixturePage {
+  const exchange = exchangeFromFixture(`${subdir}/${name}.json`, `${subdir}/${name}.headers`);
   const pkg = JSON.parse(new TextDecoder().decode(exchange.body)) as PackagePage;
-  return { name, exchange, pkg };
+  return { name: `${subdir}/${name}`, exchange, pkg };
 }
 
-export interface WholeStreamChain {
+/** A loaded page sequence routed as a cursor-less-first-page walk. */
+export interface RoutableChain {
   pages: FixturePage[];
   /** page-001's own `uri` — the genuine cursor-less first-page URL. */
   initialUrl: string;
   routes: Record<string, RecordedExchange[]>;
-  /** Every release entry across the chain, in fetch order (437 entries, 436 unique). */
+  /** Every release entry across the chain, in fetch order. */
   releasesInFetchOrder: ReleaseIdentity[];
 }
 
 /**
- * The five-page fixture chain: 001 → 002 → 003 → 050 → 111.
- *
- * Routing keys on the PREVIOUS page's `links.next`, never on each page's own
- * `uri` — the server echoes `uri` without the cursor (plan §Context). The
- * hops 003→050 and 050→111 are synthetic routing of unedited real bodies
- * (plan step 1, critique N1); every body is byte-identical to the recording.
+ * The one routing rule for a fixture walk, held once: page-001 is keyed on its
+ * own `uri`; every later page is keyed on the PREVIOUS page's `links.next` —
+ * the server echoes `uri` without the cursor (plan §Context). Callers pass the
+ * already-loaded page sequence; page *discovery* (synthetic hops vs on-disk
+ * walk) is the genuinely distinct part and stays with each caller.
  */
-export function wholeStreamChain(): WholeStreamChain {
-  const names = ['page-001', 'page-002', 'page-003', 'page-050', 'page-111'];
-  const pages = names.map(loadChainPage);
+export function chainPages(pages: FixturePage[]): Omit<RoutableChain, 'pages'> {
   const first = pages[0];
   if (first === undefined) throw new Error('fixture chain is empty');
   const initialUrl = first.pkg.uri;
@@ -171,5 +172,52 @@ export function wholeStreamChain(): WholeStreamChain {
     routes[next] = [page.exchange];
   }
   const releasesInFetchOrder = pages.flatMap((p) => p.pkg.releases);
-  return { pages, initialUrl, routes, releasesInFetchOrder };
+  return { initialUrl, routes, releasesInFetchOrder };
+}
+
+/**
+ * The five-page whole-stream fixture chain: 001 → 002 → 003 → 050 → 111.
+ *
+ * The hops 003→050 and 050→111 are synthetic routing of unedited real bodies
+ * (plan step 1, critique N1); every body is byte-identical to the recording.
+ * 437 release entries across the chain, 436 unique. Routing rule: `chainPages`.
+ */
+export function wholeStreamChain(): RoutableChain {
+  const names = ['page-001', 'page-002', 'page-003', 'page-050', 'page-111'];
+  const pages = names.map((name) => loadFixturePage('whole-stream', name));
+  return { pages, ...chainPages(pages) };
+}
+
+/**
+ * Load one committed backfill day (`test/fixtures/backfill/<day>/`) as a
+ * routable chain, using the same routing rule as `wholeStreamChain`
+ * (`chainPages`). Unlike `whole-stream/` these are genuine recorded chains — no
+ * synthetic hops. The page count is discovered from disk (the distinct part),
+ * so a 5- or 6-page day both load correctly.
+ */
+export function loadBackfillDay(day: string): RoutableChain {
+  const pages: FixturePage[] = [];
+  for (let n = 1; ; n++) {
+    const name = `page-${String(n).padStart(3, '0')}`;
+    if (!existsSync(fixturePath(`backfill/${day}/${name}.json`))) break;
+    pages.push(loadFixturePage(`backfill/${day}`, name));
+  }
+  if (pages.length === 0) throw new Error(`no backfill fixtures for day ${day}`);
+  return { pages, ...chainPages(pages) };
+}
+
+/**
+ * Merge several days' per-day route maps into one collision-free map. The
+ * days' URL keyspaces are disjoint (each cursor embeds its day's window), so a
+ * shared key is a routing bug — throw loudly rather than silently overwrite.
+ */
+export function backfillRoutes(days: string[]): Record<string, RecordedExchange[]> {
+  const merged: Record<string, RecordedExchange[]> = {};
+  for (const day of days) {
+    for (const [url, seq] of Object.entries(loadBackfillDay(day).routes)) {
+      if (url in merged) throw new Error(`route collision across days on «${url}»`);
+      merged[url] = seq;
+    }
+  }
+  return merged;
 }

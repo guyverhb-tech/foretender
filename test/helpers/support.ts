@@ -77,12 +77,14 @@ export const journalPath = (root: string): string => join(root, 'raw', 'journal.
 export const pagesDir = (root: string): string => join(root, 'raw', 'pages');
 export const releasesPath = (root: string): string => join(root, 'releases.ndjson');
 export const quarantinePath = (root: string): string => join(root, 'quarantine.ndjson');
+export const checkpointsPath = (root: string): string => join(root, 'checkpoints.ndjson');
 
 export const readJournal = (root: string): NdjsonRecord[] => readNdjson(journalPath(root));
 export const httpRecords = (root: string): NdjsonRecord[] =>
   readJournal(root).filter((r) => r['kind'] === 'http');
 export const readReleases = (root: string): NdjsonRecord[] => readNdjson(releasesPath(root));
 export const readQuarantine = (root: string): NdjsonRecord[] => readNdjson(quarantinePath(root));
+export const readCheckpoints = (root: string): NdjsonRecord[] => readNdjson(checkpointsPath(root));
 
 /**
  * Drop the run-scoped fields for §5.3 replay comparison (plan step 5): a

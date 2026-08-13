@@ -1,0 +1,15 @@
+HTTP/2 200 
+date: Thu, 13 Aug 2026 06:23:52 GMT
+content-type: application/json
+server: http/s
+expires: Thu, 19 Nov 1981 08:52:00 GMT
+cache-control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0
+pragma: no-cache
+set-cookie: SRSI_FT_AUTH=gmo786jds67s6melajo7568bn7; path=/; domain=www.find-tender.service.gov.uk; secure; HttpOnly
+strict-transport-security: max-age=31536000; includeSubdomains; preload
+x-frame-options: DENY
+access-control-allow-methods: POST, GET
+x-xss-protection: 1; mode=block
+x-content-type-options: nosniff
+cache-control: max-age=0, private, no-store, no-cache, must-revalidate
+

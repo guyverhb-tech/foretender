@@ -51,6 +51,31 @@ exchange, and page-050's to page-111's. Every body and header file is the real
 recording, byte-identical; only the chaining between them is arranged by the
 test (plan step 1, critique N1).
 
+### `backfill/` — three consecutive whole-day walks (slice 2)
+
+One directory per Europe/London day, each holding that day's complete
+`links.next` page chain (`.json` body + recorded `.headers`), the raw material
+for the resumable multi-day backfill contract test:
+
+- `2026-08-10/` — 5 pages, 459 releases. Window
+  `updatedFrom=2026-08-10T00:00:00&updatedTo=2026-08-11T00:00:00`.
+- `2026-08-11/` — 5 pages, 496 releases. Window
+  `updatedFrom=2026-08-11T00:00:00&updatedTo=2026-08-12T00:00:00`.
+- `2026-08-12/` — 6 pages, 533 releases. Window
+  `updatedFrom=2026-08-12T00:00:00&updatedTo=2026-08-13T00:00:00`.
+
+1488 releases total, disjoint across days (zero cross-day overlap, zero
+within-day duplicates); every entry carries a non-empty `id` and `ocid`, so a
+clean 3-day backfill is `seen 1488 / accepted 1488 / alreadyPresent 0 /
+quarantined 0` over 16 requests. Unlike `whole-stream/`, each day is a genuine
+recorded chain: `page-001` is the real cursor-less first page (its `uri` is the
+exact first URL the ingest core constructs — `…&limit=100`), and every
+`page-00N` follows the previous page's recorded `links.next`; the terminal page
+has no `links` key. No synthetic hops. Copied byte-for-byte from
+`.harness/research/samples/backfill/{date}/` on the same 2026-08-12 Phase 0
+walk, same public-register OGL v3 data as `whole-stream/` (the personal-data
+notice above applies identically).
+
 ### `probe/` — targeted probe recordings
 
 - `20-window-noZ-429.headers` + `.txt` and `22-window-noZ.json` + `.headers`
