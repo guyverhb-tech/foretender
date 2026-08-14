@@ -14,9 +14,11 @@ recorded in advance with confidence and an expected resolution date, then graded
 against subsequent published notices.
 
 **Read `BUILD_BRIEF.md`, `KICKOFF.md`, `PHASE0_FINDINGS.md`, and
-`PHASE1_INVARIANTS.md` before any work. Where the briefs conflict, KICKOFF.md
-wins (it is later); on data facts the precedence is PHASE0_FINDINGS.md >
-KICKOFF §2 > BUILD_BRIEF §4 (set at the Phase 0 review, 2026-08-12).
+`PHASE1_INVARIANTS.md` before any work — and `PHASE2_KICKOFF.md` once Phase 2
+is open (Phase 1, slices 1–7, is complete; that file is the Phase 2 charter and
+is latest for Phase-2 scope). Where the briefs conflict, KICKOFF.md wins (it is
+later); on data facts the precedence is PHASE0_FINDINGS.md > KICKOFF §2 >
+BUILD_BRIEF §4 (set at the Phase 0 review, 2026-08-12).
 `PHASE1_INVARIANTS.md` is builder-facing law. Phase gates and scope limits
 live in the briefs, not here.**
 
