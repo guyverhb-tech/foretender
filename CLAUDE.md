@@ -68,6 +68,21 @@ node dist/cli/lifecycle.js [--store DIR]
 # whole loop's replay — is identical on any machine; the bare 19-char local form
 # is rejected. Offline: reads only existing raw data, makes no network requests.
 node dist/cli/scoreboard.js --asof YYYY-MM-DDTHH:MM:SSZ [--store DIR]
+
+# Record a MODEL prediction (the first agent) alongside the baseline for every
+# procurement the baseline predicts, grade each predictor separately with the
+# unmodified grader, and write <store>/scoreboard-by-predictor.json — the fair
+# model-vs-baseline head-to-head. --asof is REQUIRED and must carry an explicit
+# offset (Z or ±HH:MM), like scoreboard.js.
+#   DEFAULT: replay-only over <store>/model-calls/ (the recorded model-call
+#   ledger) — ZERO network; a cache miss fails loud, telling you to re-run with
+#   --live to record it.
+#   --live: opt in to real Anthropic API calls behind a per-run budget cap
+#   (--budget N, default 200 calls), recording each verbatim to the ledger. Needs
+#   ANTHROPIC_API_KEY in the environment (see .env.example); a --live run with no
+#   key fails loud before any work. This is the only path here that touches the
+#   network or spends money.
+node dist/cli/model-predict.js --asof YYYY-MM-DDTHH:MM:SSZ [--store DIR] [--live] [--budget N]
 ```
 
 Only the default `data/` store is gitignored (anchored to the repo root). A
@@ -103,7 +118,8 @@ itself, scoped to one run — the newest, or an explicit `runId`, since the
 append-only journal accumulates a run per recorded day). `src/cli/fetch-day.ts`
 (one day) and `src/cli/backfill.ts` (a day range) are the thin live shells, both
 wiring the shared live transport from `src/cli/live-deps.ts` — the only file
-that touches global fetch. `src/normalise/` is the offline canonical projection —
+that touches global fetch on the FTS path (the model predictor's live shell,
+`src/cli/live-model.ts`, is the other, below). `src/normalise/` is the offline canonical projection —
 `model.ts` (the canonical tender shape + anomaly types), `normalise.ts` (the pure
 per-release normaliser, sibling to `validate.ts`), and `project.ts`
 (`projectTenders` — the deterministic full rebuild of `canonical.ndjson`/
@@ -136,7 +152,23 @@ of `predictions.ndjson`). `src/grading/` — `model.ts` (the structural
 network. `predictions.ndjson`/`verdicts.ndjson`/`scoreboard.json` are
 deterministic rebuildable VIEWS of `(store + priors + asof)`, full-rebuilt each
 run — not append-only (the append-only guarantee lives in the raw store they
-rebuild from). Contract tests in `test/` replay the real
+rebuild from). `src/model-predict/` is the model predictor — the FIRST agent, an
+edge that imports strictly DOWN (grading/prediction/lifecycle/identity) and is
+imported by nothing: `client.ts` (the `ModelClient` seam + wire (de)serialise,
+sibling of `Transport`), `prompt.ts` (the pure versioned prompt renderer),
+`predict.ts` (`predictWithModel` — reuses the baseline `predict` verbatim, swaps
+only the probability, with the same no-leakage cutoff), `ledger.ts` (the
+record/replay client — an NDJSON journal + content-addressed request/response
+bodies under `<store>/model-calls/`, the model-call analogue of the raw store,
+budget-capped and secret-free), and `project.ts` (`projectModelPredictions` —
+writes model rows into the shared `predictions.ndjson` keyed by
+`predictorVersion`). `src/cli/model-predict.ts`
+(`node dist/cli/model-predict.js --asof DATE [--store DIR] [--live] [--budget N]`)
+is the composition root that grades each predictor separately into
+`scoreboard-by-predictor.json`; `src/cli/live-model.ts` is the ONLY model shell
+that touches the network — the sole reader of `ANTHROPIC_API_KEY`, wiring the live
+Anthropic transport, reached only on the opt-in `--live` path (default is
+replay-only, zero network). Contract tests in `test/` replay the real
 recorded pages committed under `test/fixtures/` (never edit those; see
 `test/fixtures/README.md`). `data/` is the gitignored store.
 
