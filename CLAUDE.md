@@ -58,6 +58,16 @@ node dist/cli/normalise.js [--store DIR]
 # count + rate, orphan/skipped counts).
 # Offline: reads only existing raw data, makes no network requests.
 node dist/cli/lifecycle.js [--store DIR]
+
+# Record a falsifiable pipeline-to-tender prediction for every procurement that
+# is pipeline as of its own first planning-notice date, grade each against the
+# subsequent stored notices, and rebuild <store>/predictions.ndjson,
+# verdicts.ndjson and scoreboard.json, printing the per-segment scoreboard
+# (Brier + hit rate + counts, segmented UK1/UK2/UK3/None). --asof is REQUIRED and
+# must carry an explicit offset (Z or ±HH:MM) so the epoch — and therefore the
+# whole loop's replay — is identical on any machine; the bare 19-char local form
+# is rejected. Offline: reads only existing raw data, makes no network requests.
+node dist/cli/scoreboard.js --asof YYYY-MM-DDTHH:MM:SSZ [--store DIR]
 ```
 
 Only the default `data/` store is gitignored (anchored to the repo root). A
@@ -103,11 +113,30 @@ network. `src/lifecycle/` is the offline lifecycle projection — a sibling laye
 that reconstructs a per-`ocid` procurement lifecycle across ALL release types:
 `model.ts` (the lifecycle event/state + anomaly types), `event.ts` (the pure
 per-release event extractor), `machine.ts` (the pure zero-I/O state machine —
-`sortEvents`/`reconstructOne`/`reconstructMany`), and `project.ts`
+`sortEvents`/`reconstructOne`/`reconstructMany`), `date.ts` (the offset-aware
+epoch primitive `toEpochMs` + the `requireOffsetIso`/`ISO_WITH_OFFSET` `--asof`
+validator, shared downward by the two layers below), and `project.ts`
 (`projectLifecycles` — the deterministic full rebuild of `lifecycles.ndjson`/
 `lifecycle-anomalies.ndjson` over an existing raw store); `src/cli/lifecycle.ts`
 (`node dist/cli/lifecycle.js [--store DIR]`) is its thin shell and touches no
-network. Contract tests in `test/` replay the real
+network. `src/prediction/` and `src/grading/` are the offline prediction+grading
+loop — two sibling layers whose dependencies point strictly DOWN (prediction →
+lifecycle, grading → lifecycle, and grading NEVER imports prediction; §5.1): they
+communicate only through the `predictions.ndjson` file. `src/prediction/` —
+`model.ts` (the `Prediction` ledger shape + the fixed baseline priors/horizon/
+confidence constants), `predict.ts` (the pure predictor + the no-leakage DATE
+cutoff), and `project.ts` (`projectPredictions` — the deterministic full rebuild
+of `predictions.ndjson`). `src/grading/` — `model.ts` (the structural
+`PredictionRecord` it reads + the `Verdict`/`Scoreboard` shapes + the grader's own
+`TENDER_ONSET_TAGS` criterion), `grade.ts` (the pure three-verdict grader),
+`calibrate.ts` (the pure per-segment Brier/hit-rate fold), and `project.ts`
+(`gradePredictions` — the full rebuild of `verdicts.ndjson`/`scoreboard.json`).
+`src/cli/scoreboard.ts` (`node dist/cli/scoreboard.js --asof DATE [--store DIR]`,
+`--asof` offset-explicit) is the composition root that drives both and touches no
+network. `predictions.ndjson`/`verdicts.ndjson`/`scoreboard.json` are
+deterministic rebuildable VIEWS of `(store + priors + asof)`, full-rebuilt each
+run — not append-only (the append-only guarantee lives in the raw store they
+rebuild from). Contract tests in `test/` replay the real
 recorded pages committed under `test/fixtures/` (never edit those; see
 `test/fixtures/README.md`). `data/` is the gitignored store.
 

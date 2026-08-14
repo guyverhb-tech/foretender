@@ -1,0 +1,312 @@
+{
+    "uri": "https://www.find-tender.service.gov.uk/api/1.0/ocdsReleasePackages?updatedFrom=2026-07-22T00:00:00&updatedTo=2026-07-23T00:00:00&limit=100",
+    "version": "1.1",
+    "publishedDate": "2026-07-22T16:29:45+01:00",
+    "publisher": {
+        "name": "Cabinet Office",
+        "scheme": "GB-GOR",
+        "uid": "D2",
+        "uri": "https://www.gov.uk/government/organisations/cabinet-office"
+    },
+    "license": "http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    "releases": [
+        {
+            "id": "069310-2026",
+            "tag": [
+                "tender"
+            ],
+            "date": "2026-07-22T15:56:54+01:00",
+            "initiationType": "tender",
+            "ocid": "ocds-h6vhtk-069311",
+            "parties": [
+                {
+                    "name": "Northern Lighthouse Board",
+                    "id": "GB-PPON-PMGV-7529-QWXG",
+                    "identifier": {
+                        "scheme": "GB-PPON",
+                        "id": "PMGV-7529-QWXG"
+                    },
+                    "address": {
+                        "streetAddress": "84 George Street",
+                        "locality": "Edinburgh",
+                        "postalCode": "EH2 3DA",
+                        "country": "GB",
+                        "countryName": "United Kingdom",
+                        "region": "UKM75"
+                    },
+                    "contactPoint": {
+                        "name": "Graham Allan",
+                        "email": "procurement@nlb.org.uk",
+                        "telephone": "0131 473 3130"
+                    },
+                    "roles": [
+                        "buyer"
+                    ],
+                    "details": {
+                        "classifications": [
+                            {
+                                "scheme": "UK_CA_TYPE",
+                                "id": "publicAuthorityCentralGovernment",
+                                "description": "Public authority - central government"
+                            }
+                        ]
+                    }
+                }
+            ],
+            "buyer": {
+                "id": "GB-PPON-PMGV-7529-QWXG",
+                "name": "Northern Lighthouse Board"
+            },
+            "tender": {
+                "id": "ENPR/OBRF/2663",
+                "legalBasis": {
+                    "id": "2023/54",
+                    "scheme": "UKPGA",
+                    "uri": "https://www.legislation.gov.uk/ukpga/2023/54/contents"
+                },
+                "title": "Refurbishment of NLB Oban Base Store Roof",
+                "description": "A MANDATORY SITE VISIT IS PLANNED FOR 4 AUGUST 2026. PLEASE SEND A MESSAGE THROUGH DELTA eSOURCING MESSAGE CENTRE, OR EMAIL PROCUREMENT@NLB.ORG.UK, IF YOU WISH TO ATTEND. \nThe business requirement is to refurbish the flat roof of the main building at NLB Oban Depot to provide a safe, compliant, and durable open space for staff and visitors. The works will extend the life of the asset, improve safety, and address deficiencies that prevent its current use.\nThe scope includes the removal of existing parapet copes to enable the safe removal of known asbestos-containing materials. These works are critical to meeting statutory health and safety obligations and will require an Asbestos Management Plan (AMP) approved by the NLB Principal Civil Engineer prior to commencement.\nThe project must be delivered while maintaining the depot as a live operational facility, protecting the integrity of the Grade C listed building, and achieving value for money.\nKey Challenges\n•Live Site Working: The depot will remain operational throughout the works, requiring careful coordination to avoid disruption to planned operations.\n•Listed Building Constraints: Heritage status limits permissible construction methods and materials, increasing the need for specialist contractor experience.\n•Asbestos Risk: Known asbestos presents significant health, safety, and commercial risk, necessitating specialist planning, sequencing, and cost allowances.\n•Access and Logistics: Restricted access for personnel, vehicles, and plant may impact programme and preliminaries.\n•Cost and Programme Certainty: The combination of asbestos removal, heritage considerations, and live-site constraints increases the potential for unforeseen risks.",
+                "status": "active",
+                "items": [
+                    {
+                        "id": "1",
+                        "additionalClassifications": [
+                            {
+                                "scheme": "CPV",
+                                "id": "45260000",
+                                "description": "Roof works and other special trade construction works"
+                            },
+                            {
+                                "scheme": "CPV",
+                                "id": "45261910",
+                                "description": "Roof repair"
+                            },
+                            {
+                                "scheme": "CPV",
+                                "id": "45261920",
+                                "description": "Roof maintenance work"
+                            }
+                        ],
+                        "deliveryAddresses": [
+                            {
+                                "region": "UKM",
+                                "country": "GB",
+                                "countryName": "United Kingdom"
+                            }
+                        ],
+                        "relatedLot": "1"
+                    }
+                ],
+                "value": {
+                    "amountGross": 360000,
+                    "amount": 300000,
+                    "currency": "GBP"
+                },
+                "procurementMethod": "open",
+                "procurementMethodDetails": "Below threshold - open competition",
+                "mainProcurementCategory": "works",
+                "aboveThreshold": false,
+                "submissionMethodDetails": "https://nlb.delta-esourcing.com/",
+                "submissionTerms": {
+                    "electronicSubmissionPolicy": "allowed"
+                },
+                "tenderPeriod": {
+                    "endDate": "2026-08-26T14:00:00+01:00"
+                },
+                "enquiryPeriod": {
+                    "endDate": "2026-08-19T14:00:00+01:00"
+                },
+                "lots": [
+                    {
+                        "id": "1",
+                        "status": "active",
+                        "value": {
+                            "amountGross": 360000,
+                            "amount": 300000,
+                            "currency": "GBP"
+                        },
+                        "awardCriteria": {
+                            "criteria": [
+                                {
+                                    "type": "quality",
+                                    "name": "PRICE PER QUALITY POINT TO BE USED",
+                                    "description": "Price per Quality Pt",
+                                    "numbers": [
+                                        {
+                                            "number": 100,
+                                            "weight": "percentageExact"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "suitability": {
+                            "sme": true,
+                            "vcse": true
+                        },
+                        "contractPeriod": {
+                            "startDate": "2026-08-30T00:00:00+01:00",
+                            "endDate": "2027-03-31T23:59:59+01:00"
+                        }
+                    }
+                ],
+                "documents": [
+                    {
+                        "id": "069310-2026",
+                        "documentType": "tenderNotice",
+                        "noticeType": "UK4",
+                        "description": "Tender notice on Find a Tender",
+                        "url": "https://www.find-tender.service.gov.uk/Notice/069310-2026",
+                        "datePublished": "2026-07-22T15:56:54+01:00",
+                        "format": "text/html"
+                    }
+                ]
+            },
+            "language": "en"
+        },
+        {
+            "id": "069280-2026",
+            "tag": [
+                "planning"
+            ],
+            "date": "2026-07-22T15:27:49+01:00",
+            "initiationType": "tender",
+            "planning": {
+                "documents": [
+                    {
+                        "id": "069280-2026",
+                        "documentType": "plannedProcurementNotice",
+                        "noticeType": "UK3",
+                        "description": "Planned procurement notice on Find a Tender",
+                        "url": "https://www.find-tender.service.gov.uk/Notice/069280-2026",
+                        "datePublished": "2026-07-22T15:27:49+01:00",
+                        "format": "text/html"
+                    }
+                ]
+            },
+            "ocid": "ocds-h6vhtk-069311",
+            "parties": [
+                {
+                    "name": "Northern Lighthouse Board",
+                    "id": "GB-PPON-PMGV-7529-QWXG",
+                    "identifier": {
+                        "scheme": "GB-PPON",
+                        "id": "PMGV-7529-QWXG"
+                    },
+                    "address": {
+                        "streetAddress": "84 George Street",
+                        "locality": "Edinburgh",
+                        "postalCode": "EH2 3DA",
+                        "country": "GB",
+                        "countryName": "United Kingdom",
+                        "region": "UKM75"
+                    },
+                    "contactPoint": {
+                        "name": "Graham Allan",
+                        "email": "procurement@nlb.org.uk",
+                        "telephone": "0131 473 3130"
+                    },
+                    "roles": [
+                        "buyer"
+                    ],
+                    "details": {
+                        "classifications": [
+                            {
+                                "scheme": "UK_CA_TYPE",
+                                "id": "publicAuthorityCentralGovernment",
+                                "description": "Public authority - central government"
+                            }
+                        ]
+                    }
+                }
+            ],
+            "buyer": {
+                "id": "GB-PPON-PMGV-7529-QWXG",
+                "name": "Northern Lighthouse Board"
+            },
+            "tender": {
+                "id": "ENPR/OBRF/2663",
+                "legalBasis": {
+                    "id": "2023/54",
+                    "scheme": "UKPGA",
+                    "uri": "https://www.legislation.gov.uk/ukpga/2023/54/contents"
+                },
+                "title": "Refurbishment of NLB Oban Base Store Roof",
+                "description": "The business requirement is to refurbish the flat roof of the main building at NLB Oban Depot to provide a safe, compliant, and durable open space for staff and visitors. The works will extend the life of the asset, improve safety, and address deficiencies that prevent its current use.\nThe scope includes the removal of existing parapet copes to enable the safe removal of known asbestos-containing materials. These works are critical to meeting statutory health and safety obligations and will require an Asbestos Management Plan (AMP) approved by the NLB Principal Civil Engineer prior to commencement.\nThe project must be delivered while maintaining the depot as a live operational facility, protecting the integrity of the Grade C listed building, and achieving value for money.\nKey Challenges\n•Live Site Working: The depot will remain operational throughout the works, requiring careful coordination to avoid disruption to planned operations.\n•Listed Building Constraints: Heritage status limits permissible construction methods and materials, increasing the need for specialist contractor experience.\n•Asbestos Risk: Known asbestos presents significant health, safety, and commercial risk, necessitating specialist planning, sequencing, and cost allowances.\n•Access and Logistics: Restricted access for personnel, vehicles, and plant may impact programme and preliminaries.\n•Cost and Programme Certainty: The combination of asbestos removal, heritage considerations, and live-site constraints increases the potential for unforeseen risks.",
+                "status": "planned",
+                "items": [
+                    {
+                        "id": "1",
+                        "additionalClassifications": [
+                            {
+                                "scheme": "CPV",
+                                "id": "45260000",
+                                "description": "Roof works and other special trade construction works"
+                            },
+                            {
+                                "scheme": "CPV",
+                                "id": "45261910",
+                                "description": "Roof repair"
+                            },
+                            {
+                                "scheme": "CPV",
+                                "id": "45261920",
+                                "description": "Roof maintenance work"
+                            }
+                        ],
+                        "deliveryAddresses": [
+                            {
+                                "region": "UKM",
+                                "country": "GB",
+                                "countryName": "United Kingdom"
+                            }
+                        ],
+                        "relatedLot": "1"
+                    }
+                ],
+                "value": {
+                    "amountGross": 360000,
+                    "amount": 300000,
+                    "currency": "GBP"
+                },
+                "procurementMethod": "open",
+                "procurementMethodDetails": "Below threshold - open competition",
+                "mainProcurementCategory": "works",
+                "aboveThreshold": false,
+                "submissionMethodDetails": "https://nlb.delta-esourcing.com/",
+                "submissionTerms": {
+                    "electronicSubmissionPolicy": "allowed"
+                },
+                "tenderPeriod": {
+                    "endDate": "2026-08-26T14:00:00+01:00"
+                },
+                "enquiryPeriod": {
+                    "endDate": "2026-08-19T14:00:00+01:00"
+                },
+                "lots": [
+                    {
+                        "id": "1",
+                        "status": "planned",
+                        "value": {
+                            "amountGross": 360000,
+                            "amount": 300000,
+                            "currency": "GBP"
+                        },
+                        "suitability": {
+                            "sme": true,
+                            "vcse": true
+                        },
+                        "contractPeriod": {
+                            "startDate": "2026-08-30T00:00:00+01:00",
+                            "endDate": "2027-03-31T23:59:59+01:00"
+                        }
+                    }
+                ],
+                "communication": {
+                    "futureNoticeDate": "2026-07-23T23:59:59+01:00"
+                }
+            },
+            "language": "en"
+        }
+    ]
+}
