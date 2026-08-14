@@ -40,15 +40,23 @@ function idKey(id: string): [number, number] {
   return [Number(m[1]), Number(m[2])];
 }
 
+/**
+ * Total order on a release id string: numeric id, then year, then the (unique)
+ * full id. `sortEvents` is defined in terms of this, and the identity resolver
+ * (slice 6) reuses it to pick the "latest release providing a field" — so the
+ * two layers share ONE ordering rather than duplicating the comparator.
+ */
+export function compareReleaseId(a: string, b: string): number {
+  const [na, ya] = idKey(a);
+  const [nb, yb] = idKey(b);
+  if (na !== nb) return na - nb;
+  if (ya !== yb) return ya - yb;
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 /** Total order on `releaseId`: numeric id, then year, then the (unique) full id. */
 export function sortEvents(events: LifecycleEvent[]): LifecycleEvent[] {
-  return [...events].sort((a, b) => {
-    const [na, ya] = idKey(a.releaseId);
-    const [nb, yb] = idKey(b.releaseId);
-    if (na !== nb) return na - nb;
-    if (ya !== yb) return ya - yb;
-    return a.releaseId < b.releaseId ? -1 : a.releaseId > b.releaseId ? 1 : 0;
-  });
+  return [...events].sort((a, b) => compareReleaseId(a.releaseId, b.releaseId));
 }
 
 type Kind = 'stage' | 'amend' | 'terminal';
